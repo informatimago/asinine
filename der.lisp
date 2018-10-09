@@ -773,7 +773,7 @@ Either we have tags, and they must be unique, or we don't have tags, and the typ
   (write-line ")" stream))
 
 (defun gen (asn1 &optional (stream *standard-output*))
-  (destructuring-bind (module-name assignments &key explicit implicit oid) (cdr asn1)
+  (destructuring-bind (module-name assignments &key explicit implicit oid imports) (cdr asn1)
     (declare (ignore explicit implicit))
     (let ((*print-case* :downcase))
       (pprint `(defpackage ,(string-upcase module-name)
