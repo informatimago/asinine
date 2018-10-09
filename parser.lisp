@@ -311,12 +311,12 @@
 (defun parse-definition (pathspec)
   "Parse the ASN.1 specification stored in the file named by PATHSPEC. Returns the parsed definition."
   (let ((body
-            (with-open-file (f pathspec :direction :input)
-              (with-output-to-string (s)
-                (do ((l (read-line f nil nil) (read-line f nil nil)))
-                    ((null l))
-                  (princ l s)
-                  (fresh-line s))))))
+          (with-open-file (f pathspec :direction :input)
+            (with-output-to-string (s)
+              (do ((l (read-line f nil nil) (read-line f nil nil)))
+                  ((null l))
+                (princ l s)
+                (fresh-line s))))))
     (let ((asn1 (test-parser body)))
       asn1)))
 
