@@ -35,4 +35,33 @@
            #:decode-tagged-type
            #:defsequence
            #:defchoice
-           #:gen))
+           #:gen
+
+           #:decode-type
+           #:decode-sequence
+
+
+           #:decode-eoc
+           #:decode-object
+           #:decode-object-descriptor
+           #:decode-external
+           #:decode-real
+           #:decode-enumerated
+           #:decode-utf8string
+           #:decode-set
+           #:decode-numericstring
+           #:decode-printablestring
+           #:decode-t61string
+           #:decode-teletexstring
+           #:decode-videotexstring
+           #:decode-ia5string
+           #:decode-utctime
+           #:decode-generalizedtime
+           #:decode-graphicstring
+           #:decode-iso64string
+           #:decode-visiblestring
+           #:decode-generalstring
+           #:decode-universalstring
+           #:decode-bmpstring
+
+           ))

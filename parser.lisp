@@ -63,10 +63,10 @@
              ((string= "SET"             value) (values 'setsym          'setsym))
              ((string= "SIZE"            value) (values 'size            'size))
              ((string= "STRING"          value) (values 'string          'string))
+             ((string= "SYNTAX"          value) (values 'syntax          'syntax))
              ((string= "TAGS"            value) (values 'tags            'tags))
              ((string= "UNIVERSAL"       value) (values 'universal       'universal))
              ((string= "WITH"            value) (values 'with            'with))
-
              (t                             (values token        value)))
            (values token value)))))
 
@@ -112,7 +112,7 @@
                      name constant
                      size max
                      imports from
-                     with components present))
+                     with syntax components present))
 
   (module-definition
    (name maybe-oid-list definitions               |::=| begin import-list module-body end (lambda (a b c d e imp f g)     (declare (ignore c d e g))      `(:module ,a ,f :oid ,b :imports ,imp)))
@@ -159,20 +159,26 @@
    (assignment-list assignment (lambda (a b) (append a (list b)))))
 
   (assignment
-   (name                   |::=| type                           (lambda (a b c)         (declare (ignore b))      `(,a ,c)))
-   (name object identifier |::=| name-or-oid                    (lambda (a b c d e)     (declare (ignore b c d))  `(,a (:object-identifier ,e))))
-   (name integer           |::=| constant                       (lambda (a b c d)       (declare (ignore b c))    `(,a (:integer ,d))))
+   (name                   |::=| type         (lambda (a b c)         (declare (ignore b))      `(,a ,c)))
+   (name object identifier |::=| name-or-oid  (lambda (a b c d e)     (declare (ignore b c d))  `(,a (:object-identifier ,e))))
+   (name integer           |::=| constant     (lambda (a b c d)       (declare (ignore b c))    `(,a (:integer ,d))))
+   (name name              |::=| bracket-type (lambda (n1 n2 e type)  (declare (ignore e))      `(,n1 ,(list (first type) n2 (rest type))))))
 
-   (name name              |::=| |{| object-identifier-list/mbib maybe-oid |}|
-         (lambda (n1 n2 c l oidl maybe-oid r)
-           (print `(oidl ,oidl maybe-oid ,maybe-oid))
-           (if maybe-oid
-               (if (and (= 3 (length oidl))
-                        (eq 'identified (second oidl))
-                        (eq 'by         (third oidl)))
-                   `(,n1 (:type-identified-by ,n2 ,(first oidl) ,maybe-oid))
-                   (error "Invalid syntax ~S" (list n1 n2 c l oidl maybe-oid r)))
-               `(,n1 (:object-identifier-alias ,n2 ,oidl))))))
+  (bracket-type
+   (|{| opt-syntax object-identifier-list/mbib maybe-oid |}|
+        (lambda (n1 n2 c l syntax oidl maybe-oid r)
+          (print `(oidl ,oidl maybe-oid ,maybe-oid))
+          (if maybe-oid
+              (if (and (= 3 (length oidl))
+                       (eq 'identified (second oidl))
+                       (eq 'by         (third oidl)))
+                  `(,n1 (:type-identified-by ,n2 ,(first oidl) ,syntax ,maybe-oid))
+                  (error "Invalid syntax ~S" (list n1 n2 c l oidl syntax maybe-oid r)))
+              `(,n1 (:object-identifier-alias ,n2 ,oidl ,syntax))))))
+
+  (opt-syntax
+   (with syntax name (lambda (w s name) `(:syntax name)))
+   empty)
 
   (maybe-oid
    oid
@@ -282,10 +288,10 @@
    (object-identifier-list named-number (lambda (a b) (append a (list b)))))
 
   (sequence-expr
-   (sequence |{| element-type-list |}| constraint (lambda (a b c d constraint) (declare (ignore a b d)) `(:sequence ,c ,@(when constraint (list constraint)))))
-   (sequence |{|                   |}| constraint (lambda (a b c   constraint) (declare (ignore a b c)) `(:sequence    ,@(when constraint (list constraint))))))
+   (sequence |{| element-type-list |}| opt-constraint (lambda (a b c d constraint) (declare (ignore a b d)) `(:sequence ,c ,@(when constraint (list constraint)))))
+   (sequence |{|                   |}| opt-constraint (lambda (a b c   constraint) (declare (ignore a b c)) `(:sequence    ,@(when constraint (list constraint))))))
 
-  (constraint
+  (opt-constraint
    (|(| constraint-disjonction |)| (lambda (l cd r) (declare (ignore l r)) cd))
    empty)
 

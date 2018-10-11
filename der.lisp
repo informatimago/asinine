@@ -88,13 +88,6 @@
   (encode-length stream 1)
   (write-byte (if value #xff 0) stream))
 
-(defun decode-boolean (stream)
-  (decode-identifier stream)
-  (decode-length stream)
-  (let ((byte (read-byte stream)))
-    (if (zerop byte)
-        nil
-        t)))
 
 ;; ---------------------------------------
 
@@ -224,7 +217,8 @@
 
 (defun decode-null (stream)
   (decode-identifier stream)
-  (decode-length stream))
+  (decode-length stream)
+  nil)
 
 ;; ------------------------
 
@@ -351,6 +345,110 @@
             ((not (listen s))
              (nreverse values))
           (push (funcall decoder s) values))))))
+
+
+(defun decode-eoc               (stream)
+  (multiple-value-bind (eoc class primitivep) (decode-identifier stream)
+    (let ((length (decode-length stream)))
+      (progn
+        (if (zerop length)
+            nil
+            (decode-type stream))
+        #-(and)
+        (list :eoc :class class :primitivep primitivep
+                   :data (if (zerop length)
+                             nil
+                             (decode-type stream)))))))
+
+(defun decode-boolean (stream)
+  (multiple-value-bind (eoc class primitivep) (decode-identifier stream)
+    (let ((length (decode-length stream)))
+      (if (= 1 length)
+          (let ((byte (read-byte stream)))
+            (if (zerop byte)
+                nil
+                t))
+          (progn
+            (if (zerop length)
+                #()
+                (decode-type stream))
+            #-(and)
+            (list :eoc :class class :primitivep primitivep
+                       :data (if (zerop length)
+                                 nil
+                                 (decode-type stream))))))))
+
+(defun decode-object            (stream) (error "~S not implemented yet" 'decode-object))
+(defun decode-object-descriptor (stream) (error "~S not implemented yet" 'decode-object-descriptor))
+(defun decode-external          (stream) (error "~S not implemented yet" 'decode-external))
+(defun decode-real              (stream) (error "~S not implemented yet" 'decode-real))
+(defun decode-enumerated        (stream) (error "~S not implemented yet" 'decode-enumerated))
+(defun decode-utf8string        (stream) (decode-general-string stream))
+(defun decode-set               (stream) (error "~S not implemented yet" 'decode-set))
+(defun decode-numericstring     (stream) (decode-general-string stream))
+(defun decode-printablestring   (stream) (decode-general-string stream))
+(defun decode-t61string         (stream) (decode-general-string stream))
+(defun decode-teletexstring     (stream) (decode-general-string stream))
+(defun decode-videotexstring    (stream) (decode-general-string stream))
+(defun decode-ia5string         (stream) (decode-general-string stream))
+(defun decode-utctime           (stream) (error "~S not implemented yet" 'decode-utctime))
+(defun decode-generalizedtime   (stream) (error "~S not implemented yet" 'decode-generalizedtime))
+(defun decode-graphicstring     (stream) (decode-general-string stream))
+(defun decode-iso64string       (stream) (decode-general-string stream))
+(defun decode-visiblestring     (stream) (decode-general-string stream))
+(defun decode-generalstring     (stream) (decode-general-string stream))
+(defun decode-universalstring   (stream) (decode-general-string stream))
+(defun decode-bmpstring         (stream) (decode-octet-string stream))
+
+(defun make-prefixed-stream (bytes stream)
+  (make-concatenated-stream (flexi-streams:make-in-memory-input-stream bytes)
+                            stream))
+
+(defun decode-type (stream)
+  (let ((byte (read-byte stream)))
+    (multiple-value-bind (tag class primitive-p)
+        (flexi-streams:with-input-from-sequence (s (vector byte))
+          (decode-identifier s))
+      (declare (ignore class primitive-p)) ; TODO: process them!
+      (let ((stream (make-prefixed-stream (vector byte) stream)))
+        (case tag
+          (0  (decode-eoc               stream))
+          (1  (decode-boolean           stream))
+          (2  (decode-integer           stream))
+          (3  (decode-bit-string        stream))
+          (4  (decode-octet-string      stream))
+          (5  (decode-null              stream))
+          (6  (decode-object            stream))
+          (7  (decode-object-descriptor stream))
+          (8  (decode-external          stream))
+          (9  (decode-real              stream))
+          (10 (decode-enumerated        stream))
+          (12 (decode-utf8string        stream))
+          (16 (decode-sequence          stream))
+          (17 (decode-set               stream))
+          (18 (decode-numericstring     stream))
+          (19 (decode-printablestring   stream))
+          (20 (decode-t61string         stream))
+          (21 (decode-videotexstring    stream))
+          (22 (decode-ia5string         stream))
+          (23 (decode-utctime           stream))
+          (24 (decode-generalizedtime   stream))
+          (25 (decode-graphicstring     stream))
+          (26 (decode-iso64string       stream))
+          (27 (decode-generalstring     stream))
+          (28 (decode-universalstring   stream))
+          (30 (decode-bmpstring         stream)))))))
+
+(defun decode-sequence (stream)
+  (decode-identifier stream)
+  (let ((length (decode-length stream)))
+    (let ((bytes (nibbles:make-octet-vector length)))
+      (read-sequence bytes stream)
+      (flexi-streams:with-input-from-sequence (s bytes)
+        (do ((values nil))
+            ((not (listen s))
+             (coerce (nreverse values) 'vector))
+          (push (decode-type s) values))))))
 
 ;; -----------------------------------------
 
@@ -821,8 +919,8 @@ Either we have tags, and they must be unique, or we don't have tags, and the typ
                         stream))
                ((:bit-string)
                 (pprint `(defun ,(encoder-name name) (stream value)
-                                   (encode-bit-string stream value))
-                                stream)
+                           (encode-bit-string stream value))
+                        stream)
                 (pprint `(defun ,(decoder-name name) (stream)
                            (decode-bit-string stream))
                         stream))
