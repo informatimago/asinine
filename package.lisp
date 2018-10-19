@@ -35,4 +35,5 @@
            #:decode-tagged-type
            #:defsequence
            #:defchoice
-           #:gen))
+           #:gen
+           #:decode-sequence))
